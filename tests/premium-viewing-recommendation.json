@@ -1,0 +1,8 @@
+[
+  { "email": "james.martinez@sapphirewellness.com", "password": "password123", "gender": "female", 
+    "plan": "premium" },
+  { "email": "robert.anderson@sapphirewellness.com", "password": "password123", "gender": "female", 
+    "plan": "premium"}
+
+ 
+]

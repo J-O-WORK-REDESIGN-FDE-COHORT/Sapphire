@@ -1,0 +1,10 @@
+[
+  { "email": "john.smith@sapphirewellness.com", "password": "password123", "gender": "female", 
+    "plan": "premium" },
+  { "email": "michael.davis@sapphirewellness.com", "password": "password123", "gender": "female", 
+    "plan": "premium"},
+  { "email": "david.wilson@sapphirewellness.com", "password": "password123", "gender": "female", 
+    "plan": "premium"}
+
+ 
+]
