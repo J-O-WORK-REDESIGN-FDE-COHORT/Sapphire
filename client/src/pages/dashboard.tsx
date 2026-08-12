@@ -5,6 +5,7 @@ import MetricCard from "@/components/metric-card";
 import HeartRateChart from "@/components/charts/heart-rate-chart";
 import ActivityChart from "@/components/charts/activity-chart";
 import BloodPressureChart from "@/components/charts/blood-pressure-chart";
+import TemperatureChart from "@/features/temperature/TemperatureChart";
 import NotificationBell from "@/components/notification-bell";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -246,7 +247,12 @@ export default function Dashboard() {
 
             <BloodPressureChart data={bloodPressureChartData} />
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+            {/* TEST123PUB-127: Body temperature trend chart (T033) */}
+            <div className="mt-6">
+              <TemperatureChart userId={user.email ?? ""} />
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8 mt-6">
               <h4 className="text-sm font-medium text-slate-900 mb-3">Recent Blood Pressure Readings</h4>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200">
