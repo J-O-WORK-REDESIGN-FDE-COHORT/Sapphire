@@ -7,16 +7,18 @@ A modern healthcare dashboard built with React, TypeScript, and Vite. This is a 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.6.3-3178C6?logo=typescript)
 ![Vite](https://img.shields.io/badge/Vite-5.4.19-646CFF?logo=vite)
 
-## 🎯 Overview
+## Overview
 
 Sapphire Wellness is a comprehensive health monitoring dashboard that allows users to:
 - Track heart rate, blood pressure, activity, and sleep data
 - View health trends with interactive charts (Recharts)
+- **View body temperature trends with unit switching (°C/°F) and granularity filters** (TEST123PUB-127)
+- **Export health analytics data including temperature records** (TEST123PUB-127)
 - Receive real-time notifications
 - Upgrade to premium features
 - Secure authentication via Keycloak OIDC
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -26,6 +28,7 @@ Sapphire Wellness is a comprehensive health monitoring dashboard that allows use
 │  └──────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────┐  │
 │  │  Apollo GraphQL Client (Bearer Token Auth)       │  │
+│  │  + W3C traceparent header propagation (T042)     │  │
 │  └──────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
                           ↓
@@ -41,7 +44,7 @@ Sapphire Wellness is a comprehensive health monitoring dashboard that allows use
 └─────────────────────────────────────────────────────────┘
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -92,7 +95,7 @@ VITE_NOTIFICATION_API_URL=http://localhost:8084
 VITE_SEGMENT_WRITE_KEY=your-segment-key
 ```
 
-## 📦 Tech Stack
+## Tech Stack
 
 ### Core
 - **React 18.3.1** - UI library
@@ -120,7 +123,7 @@ VITE_SEGMENT_WRITE_KEY=your-segment-key
 - **React Hook Form 7.55.0** - Form management
 - **Zod 3.24.2** - Schema validation
 
-## 🔐 Authentication Flow
+## Authentication Flow
 
 1. User clicks "Login" → Redirects to Keycloak
 2. User authenticates with Keycloak
@@ -131,7 +134,7 @@ VITE_SEGMENT_WRITE_KEY=your-segment-key
 7. BFF validates token and returns data
 8. Silent renewal refreshes tokens automatically
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Sapphire/
@@ -146,10 +149,12 @@ Sapphire/
 │   │   │   └── notificationService.ts
 │   │   ├── lib/
 │   │   │   ├── apolloClient.ts # GraphQL client
+│   │   │   ├── traceparent.ts  # W3C traceparent header utility (T042)
 │   │   │   └── queryClient.ts
 │   │   ├── graphql/
 │   │   │   ├── auth.ts         # Auth queries
-│   │   │   └── health.ts       # Health queries
+│   │   │   ├── health.ts       # Health queries
+│   │   │   └── temperature.ts  # Temperature queries (TEST123PUB-127)
 │   │   ├── hooks/
 │   │   │   ├── useAuth.ts      # Auth hook
 │   │   │   └── useNotifications.ts
@@ -158,6 +163,14 @@ Sapphire/
 │   │   │   ├── callback.tsx    # OIDC callback
 │   │   │   ├── dashboard.tsx   # Main dashboard
 │   │   │   └── not-found.tsx
+│   │   ├── features/
+│   │   │   └── temperature/    # Temperature feature module (TEST123PUB-127)
+│   │   │       ├── TemperatureChart.tsx
+│   │   │       ├── HealthExportButton.tsx
+│   │   │       ├── useTemperatureData.ts
+│   │   │       ├── useTemperatureExport.ts
+│   │   │       ├── temperature.types.ts
+│   │   │       └── temperature.constants.ts
 │   │   └── components/         # Reusable components
 │
 ├── docs/                        # Documentation
@@ -179,7 +192,7 @@ Sapphire/
 └── README.md                   # This file
 ```
 
-## 🛠️ Available Scripts
+## Available Scripts
 
 ```bash
 # Development
@@ -196,7 +209,7 @@ npm run check        # Run TypeScript type checking
 npm run test         # Run E2E tests with Playwright
 ```
 
-## 🔧 Development
+## Development
 
 ### Adding New GraphQL Queries
 
@@ -235,14 +248,69 @@ function UserProfile({ userId }) {
 
 Routes are automatically protected by the authentication check in `App.tsx`. Unauthenticated users are redirected to the home page.
 
-## 📊 Data Visualization
+## Data Visualization
 
 The app uses **Recharts** for data visualization. Example charts include:
 - Heart Rate Trends (Line Chart)
 - Blood Pressure History (Line Chart)
 - Activity Summary (Bar Chart)
+- **Body Temperature Trends (Line Chart — min/max/avg with °C/°F toggle)** (TEST123PUB-127)
 
-## 🔒 Security
+## Temperature Feature (TEST123PUB-127)
+
+### GraphQL Queries Used
+
+```typescript
+// Trend data for chart
+const GET_TEMPERATURE_DATA = gql`
+  query GetTemperatureData($userId: ID!, $granularity: String!, $dateFrom: String!, $dateTo: String!, $deviceSource: String) {
+    temperatureData(userId: $userId, granularity: $granularity, dateFrom: $dateFrom, dateTo: $dateTo, deviceSource: $deviceSource) {
+      minValue maxValue avgValue unit granularity periodStart periodEnd
+    }
+  }
+`;
+
+// Export data
+const GET_TEMPERATURE_EXPORT = gql`
+  query GetTemperatureExport($userId: ID!, $dateFrom: String!, $dateTo: String!, $deviceSource: String) {
+    temperatureExport(userId: $userId, dateFrom: $dateFrom, dateTo: $dateTo, deviceSource: $deviceSource) {
+      records { timestamp value unit deviceSource userId }
+    }
+  }
+`;
+```
+
+### URL State Parameters
+
+All temperature filters are stored in the URL search string for shareability:
+
+| Param | Values | Default | Purpose |
+|---|---|---|---|
+| `tempGranularity` | `day` \| `week` \| `month` | `day` | Chart aggregation level |
+| `tempFrom` | ISO-8601 datetime | 7 days ago | Date range start |
+| `tempTo` | ISO-8601 datetime | now | Date range end |
+| `tempDevice` | device source string | (unset) | Filter by device |
+| `tempUnit` | `CELSIUS` \| `FAHRENHEIT` | `CELSIUS` | Display unit |
+
+### Observability — W3C traceparent Propagation
+
+Every outbound Apollo HTTP request carries a `traceparent` header generated by
+`client/src/lib/traceparent.ts`. This creates a root span ID that the BFF
+propagates to downstream charting-api spans, enabling distributed trace
+correlation across the full request chain in any OTEL-compatible backend:
+
+```
+Browser (traceparent header)
+  └→ BFF Apollo Server (temperatureData resolver)
+        └→ ChartingAPI HTTP call (traceparent forwarded)
+              └→ PostgreSQL query span
+```
+
+No OTEL browser SDK is required. The `crypto.randomUUID()` Web API generates
+cryptographically random UUIDs, which are converted to W3C traceparent format
+(`00-<32hexTraceId>-<16hexSpanId>-01`).
+
+## Security
 
 - **PKCE (Proof Key for Code Exchange)** - Prevents authorization code interception
 - **Bearer Token Authentication** - Tokens sent in Authorization header
@@ -254,7 +322,7 @@ The app uses **Recharts** for data visualization. Example charts include:
 
 ⚠️ **Important**: This implementation uses frontend OIDC authentication, which stores tokens in the browser. While PKCE provides protection, this approach is less secure than BFF-managed authentication. Consider migrating to BFF-managed auth for production healthcare applications.
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run E2E tests
@@ -264,7 +332,7 @@ npm run test
 npx playwright test tests/example.spec.ts
 ```
 
-## 📚 Documentation
+## Documentation
 
 Comprehensive documentation is available in the `docs/` directory:
 
@@ -273,7 +341,7 @@ Comprehensive documentation is available in the `docs/` directory:
 - **[KEYCLOAK_AUTHENTICATION_OPTIONS.md](docs/KEYCLOAK_AUTHENTICATION_OPTIONS.md)** - Authentication approaches
 - **[FRONTEND_OIDC_IMPLEMENTATION_GUIDE.md](docs/FRONTEND_OIDC_IMPLEMENTATION_GUIDE.md)** - Implementation details
 
-## 🤝 Integration Requirements
+## Integration Requirements
 
 ### BFF GraphQL API
 
@@ -285,6 +353,8 @@ The frontend expects a GraphQL API with the following capabilities:
 - `bloodPressureReadings` - Get blood pressure data
 - `activityReadings` - Get activity data
 - `sleepReadings` - Get sleep data
+- `temperatureData` - Get temperature trend data (TEST123PUB-127)
+- `temperatureExport` - Get raw temperature export (TEST123PUB-127)
 
 **Required Mutations:**
 - `logout` - Logout user
@@ -313,3 +383,7 @@ Create a public client in Keycloak:
   }
 }
 ```
+
+## License
+
+ISC

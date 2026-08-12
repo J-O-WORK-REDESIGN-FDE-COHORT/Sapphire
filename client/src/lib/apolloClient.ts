@@ -5,6 +5,7 @@ import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { getMainDefinition } from '@apollo/client/utilities';
 import { createClient } from 'graphql-ws';
 import { AuthService } from '@/services/authService';
+import { generateTraceparent } from './traceparent';
 
 const httpUrl = (window as any).__ENV__?.VITE_BFF_API_URL || import.meta.env.VITE_BFF_API_URL || 'http://localhost:4000/graphql';
 const wsUrl = (window as any).__ENV__?.VITE_BFF_WS_URL || import.meta.env.VITE_BFF_WS_URL || 'ws://localhost:4000/graphql';
@@ -46,6 +47,17 @@ const wsClient = createClient({
 });
 
 const wsLink = new GraphQLWsLink(wsClient);
+
+// T042 — inject a fresh W3C traceparent header on every HTTP GraphQL request
+// (Constitution gate 15). This creates a root span context that the BFF
+// propagates downstream to charting-api resolver spans, enabling distributed
+// trace correlation without requiring a full OTEL SDK in the browser.
+const traceparentLink = setContext((_, { headers }) => ({
+  headers: {
+    ...headers,
+    traceparent: generateTraceparent(),
+  },
+}));
 
 const authLink = setContext(async (_, { headers }) => {
   const token = await AuthService.getAccessToken();
@@ -93,7 +105,7 @@ const splitLink = split(
     return isSubscription;
   },
   wsLink,
-  from([errorLink, authLink, httpLink])
+  from([errorLink, traceparentLink, authLink, httpLink])
 );
 
 export const apolloClient = new ApolloClient({
