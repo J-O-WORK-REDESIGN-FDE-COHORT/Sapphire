@@ -1,4 +1,4 @@
-import { User, Mail, MapPin, Crown, Ruler, Weight, Users, Heart, Activity } from "lucide-react";
+import { User, Mail, MapPin, Crown, Ruler, Weight, Users, Heart, Activity, Download } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import NotificationBell from "@/components/notification-bell";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,6 +7,8 @@ import { useQuery, useMutation } from "@apollo/client/react";
 import { ACTIVITY_SUMMARY, LATEST_WELLNESS_SUMMARY, UPGRADE_USER_TO_PREMIUM } from "@/graphql/auth";
 import { useState, useEffect } from "react";
 import { trackPage, trackEvent, AnalyticsEvents } from "@/lib/analytics";
+// TEST123PUB-127 / T038 — Temperature export trigger
+import HealthExportButton from "@/features/temperature/HealthExportButton";
 
 interface Address {
   city: string;
@@ -400,6 +402,30 @@ export default function UserProfile() {
                       </div>
                     )}
                   </div>
+
+                  {/* TEST123PUB-127 / T038 — Health Data Export Section */}
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Health Data Export</h3>
+                    <p className="text-sm text-slate-600 mb-4">
+                      Download your temperature records for the currently selected date range.
+                      The export includes all readings with their value, unit, timestamp, and
+                      device source. Use the date-range filter on the Health Dashboard to narrow
+                      the window before exporting.
+                    </p>
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Download className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">Temperature Records</p>
+                          <p className="text-xs text-slate-500">JSON format &middot; includes value, unit, timestamp, device source</p>
+                        </div>
+                      </div>
+                      <HealthExportButton userId={user.email ?? ""} />
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
